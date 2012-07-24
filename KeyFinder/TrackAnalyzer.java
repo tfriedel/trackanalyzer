@@ -4,6 +4,7 @@
  */
 package KeyFinder;
 
+import at.ofai.music.beatroot.BeatRoot;
 import it.sauronsoftware.jave.*;
 import java.io.File;
 import org.jaudiotagger.audio.AudioFile;
@@ -75,6 +76,10 @@ public class TrackAnalyzer {
 			p.setHopSize(8192);
 			KeyDetectionResult r = k.findKey(data, p);
 			System.out.println(camelotKey(r.globalKeyEstimate));
+			
+			// get bpm
+			BeatRoot.getBPM(wavfilename);
+			
 			if (writeTags) {
 				if (filename.endsWith(".mp3")) {
 					AudioFile f = AudioFileIO.read(new File(filename));
@@ -84,6 +89,7 @@ public class TrackAnalyzer {
 					temp.delete();
 				}
 			}
+
 		}
 	}
 
@@ -105,13 +111,6 @@ public class TrackAnalyzer {
 		// Get the tag from the audio file
 		// If there is no ID3Tag create an ID3v2.3 tag
 		Tag tag = audioFile.getTagOrCreateAndSetDefault();
-		if (tag.hasField("TXXX")) {
-			System.out.println("has TXXX");
-		}
-
-		if (tag.hasField("KEY_STARTT")) {
-			System.out.println("has KEY_STARTT");
-		}
 		// If there is only a ID3v1 tag, copy data into new ID3v2.3 tag
 		if (!(tag instanceof ID3v23Tag || tag instanceof ID3v24Tag)) {
 			Tag newTagV23 = null;
