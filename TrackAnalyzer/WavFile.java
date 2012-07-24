@@ -1,4 +1,4 @@
-package KeyFinder;
+package TrackAnalyzer;
 
 // Wav file IO class
 // A.Greensted

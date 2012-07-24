@@ -18,7 +18,7 @@
 	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-package KeyFinder;
+package TrackAnalyzer;
 import java.io.*;
 
 public class RandomAccessInputStream extends InputStream {

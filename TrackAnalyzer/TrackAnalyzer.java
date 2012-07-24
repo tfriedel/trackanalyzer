@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package KeyFinder;
+package TrackAnalyzer;
 
 import at.ofai.music.beatroot.BeatRoot;
 import it.sauronsoftware.jave.*;
@@ -40,7 +40,7 @@ public class TrackAnalyzer {
 		boolean writeTags = true;
 		String wavfilename;
 		if (args.length < 1) {
-			System.out.println("usage: KeyFinder inputfile.wav");
+			System.out.println("usage: TrackAnalyzer inputfile.mp3");
 		} else {
 			String filename = args[0];
 			AudioData data = new AudioData();
@@ -77,23 +77,27 @@ public class TrackAnalyzer {
 			Parameters p = new Parameters();
 			p.setHopSize(8192);
 			KeyDetectionResult r = k.findKey(data, p);
-			System.out.println(camelotKey(r.globalKeyEstimate));
+			System.out.println("filename: "+filename);
+			System.out.println("key: "+camelotKey(r.globalKeyEstimate));
 			
 			// get bpm
 			double bpm =BeatRoot.getBPM(wavfilename); 
-			System.out.printf("BPM: %f", bpm);
+			String formattedBpm =new DecimalFormat("#.#").format(bpm).replaceAll(",", "."); 
+			System.out.printf("BPM: %s\n", formattedBpm);
 			
 			if (writeTags) {
-				AudioFile f = AudioFileIO.read(new File(filename));
+				File file = new File(filename);
+				AudioFile f = AudioFileIO.read(file);
 				if (filename.endsWith(".mp3")) {
 					setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate));
 				}
 				Tag tag = f.getTag();
-				tag.setField(FieldKey.BPM,new DecimalFormat("#.#").format(bpm).replaceAll(",", "."));
+				tag.setField(FieldKey.BPM, formattedBpm);
 				f.commit();
 				if (temp != null) {
 					temp.delete();
 				}
+				System.exit(0);
 			}
 
 		}

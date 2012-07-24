@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package KeyFinder;
+package TrackAnalyzer;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -122,7 +122,7 @@ public class AudioData {
             WavFile wavFile = WavFile.openWavFile(new File(pathName));
 
             // Display information about the wav file
-            wavFile.display();
+            //wavFile.display();
 
             // Get the number of audio channels in the wav file
             channels = wavFile.getNumChannels();
@@ -149,10 +149,6 @@ public class AudioData {
                     }
                 }
             } while (framesRead != 0);
-
-
-            // Output the minimum and maximum value
-            System.out.printf("Min: %f, Max: %f\n", min, max);
 
             //samples = Utils.doubleArrayAsList(buffer);
 			samples = buffer;

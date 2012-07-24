@@ -1,7 +1,7 @@
-package KeyFinder;
+package TrackAnalyzer;
 
-import KeyFinder.Parameters.key_t;
-import KeyFinder.Parameters.similarity_measure_t;
+import TrackAnalyzer.Parameters.key_t;
+import TrackAnalyzer.Parameters.similarity_measure_t;
 import java.util.ArrayList;
 
 /**

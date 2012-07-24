@@ -152,7 +152,10 @@ public class FFT {
 		fft(re, im, FORWARD);
 		for (int i = 0; i < re.length; i++) {
 			double pow = re[i] * re[i] + im[i] * im[i];
-			im[i] = Math.atan2(im[i], re[i]);
+			//im[i] = Math.atan2(im[i], re[i]);
+			im[i] = FastTrig.aTan2(im[i], re[i]);
+			//im[i] = FastTrig.aTan2Lookup((float)im[i], (float)re[i]);
+			//im[i] = FastTrig.fast_atan2((float)im[i], (float)re[i]);
 			re[i] = pow;
 		}
 	} // powerPhaseFFT()

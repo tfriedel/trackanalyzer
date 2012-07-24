@@ -2,9 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package KeyFinder;
+package TrackAnalyzer;
 
-import KeyFinder.Parameters.tone_profile_t;
+import TrackAnalyzer.Parameters.tone_profile_t;
 import java.util.ArrayList;
 
 /**

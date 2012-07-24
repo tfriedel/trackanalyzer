@@ -1,4 +1,4 @@
-package KeyFinder;
+package TrackAnalyzer;
 
 public class WavFileException extends Exception
 {
