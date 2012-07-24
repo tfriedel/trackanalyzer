@@ -7,10 +7,12 @@ package KeyFinder;
 import at.ofai.music.beatroot.BeatRoot;
 import it.sauronsoftware.jave.*;
 import java.io.File;
+import java.text.DecimalFormat;
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotWriteException;
 import org.jaudiotagger.tag.FieldDataInvalidException;
+import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.Tag;
 import org.jaudiotagger.tag.id3.*;
 import org.jaudiotagger.tag.id3.framebody.FrameBodyTXXX;
@@ -78,13 +80,17 @@ public class TrackAnalyzer {
 			System.out.println(camelotKey(r.globalKeyEstimate));
 			
 			// get bpm
-			BeatRoot.getBPM(wavfilename);
+			double bpm =BeatRoot.getBPM(wavfilename); 
+			System.out.printf("BPM: %f", bpm);
 			
 			if (writeTags) {
+				AudioFile f = AudioFileIO.read(new File(filename));
 				if (filename.endsWith(".mp3")) {
-					AudioFile f = AudioFileIO.read(new File(filename));
 					setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate));
 				}
+				Tag tag = f.getTag();
+				tag.setField(FieldKey.BPM,new DecimalFormat("#.#").format(bpm).replaceAll(",", "."));
+				f.commit();
 				if (temp != null) {
 					temp.delete();
 				}

@@ -46,6 +46,7 @@ import javax.sound.midi.Track;
 import at.ofai.music.worm.Worm;
 import at.ofai.music.worm.WormFile;
 import at.ofai.music.worm.WormParameters;
+import java.util.ArrayList;
 
 // Adapted from eventList::readMatchFile in beatroot/src/eventMidi.cpp
 
@@ -530,6 +531,24 @@ public class EventList implements Serializable {
 		out.close();
 	} // writeBeatsAsText()
 
+	public double getBPM() {
+		ArrayList<Double> l = new ArrayList<Double>();
+		for (Iterator<Event> it = iterator(); it.hasNext(); ) {
+			Event e = it.next();
+			l.add(e.keyDown);
+		}
+		double sum = 0;
+		double mean = 0;
+		if (l.size()>1) {
+			for (int i=1;i<l.size();i++) {
+				sum += (l.get(i)-l.get(i-1));
+			}
+			mean = sum/(l.size()-1);
+		}
+		double bpm = 60/mean;
+		return bpm;
+	}
+			
 	public void writeBeatTrackFile(String fileName) throws Exception {
 		if (fileName.endsWith(".txt") || fileName.endsWith(".csv"))
 			writeBeatsAsText(fileName);
@@ -551,6 +570,7 @@ public class EventList implements Serializable {
 			out.close();
 		}
 	} // writeBeatTrackFile()
+
 
 	/** Reads a file containing time,String pairs into an EventList. */
 	public static EventList readLabelFile(String fileName) throws Exception {

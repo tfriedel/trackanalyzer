@@ -378,7 +378,7 @@ public class BeatRoot {
 //		}
 	}  // constructor
 
-	public static float getBPM(String filename) {
+	public static double getBPM(String filename) {
 		BeatRoot br = new BeatRoot();
 		br.batchMode = false;
 		br.playWithBeats = false;
@@ -387,23 +387,13 @@ public class BeatRoot {
 		br.fileChooser = null;
 		br.gui = null;
 		br.audioProcessor = new AudioProcessor();
-		while (true) {					// loop for each line of args file
-			br.audioIn = filename;
-			br.audioProcessor.setInputFile(br.audioIn);
-			br.audioProcessor.processFile();
-			EventList annotated = null;
-			EventList beats = BeatTrackDisplay.beatTrack(br.audioProcessor.onsetList, annotated);
-			br.textOutputFile = "c:\\temp\\beats.txt";
-			if (br.textOutputFile != null) {
-				try {
-					beats.writeBeatsAsText(br.textOutputFile);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-			break;
-		}
-		return 0;
+		br.audioIn = filename;
+		br.audioProcessor.setInputFile(br.audioIn);
+		br.audioProcessor.processFile();
+		EventList annotated = null;
+		EventList beats = BeatTrackDisplay.beatTrack(br.audioProcessor.onsetList, annotated);
+		double bpm = beats.getBPM();
+		return bpm;
 	}
 
 	/**
