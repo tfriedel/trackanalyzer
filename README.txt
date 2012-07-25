@@ -14,6 +14,9 @@ or java -jar trackanalyzer.jar -l listOfAudioFiles.txt
 BPM and key information will be calculated and written to the tags
 (KEY_START and BPM fields).
 
+A current build of TrackAnalyzer can be downloaded at
+https://dl.dropbox.com/u/367262/TrackAnalyzer.zip
+
 TrackAnalyzer is licensed under the GPL, see gpl.txt.
 
 Copyright 2012 Thomas Friedel.
