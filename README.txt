@@ -1,0 +1,15 @@
+TrackAnalyzer is a command line tool that estimates the musical key
+and bpm of digital recordings, to aid DJs in harmonic mixing. The key
+analyzer is a port of KeyFinder by Ibrahim Sha'ath (www.ibrahimshaath.co.uk/keyfinder).
+The bpm component is basically a modified version of Simon Dixon's BeatRoot.
+You also need these libraries:
+JAudioTagger - used for reading/writing tags of audio files
+jTransforms - fast fourier transforms
+Jave - ffmpeg wrapper
+
+You can use TrackAnalyzer like this:
+java -jar trackanalyzer.jar audiofile.mp3
+or java -jar trackanalyzer.jar -l listOfAudioFiles.txt
+
+BPM and key information will be calculated and written to the tags
+(KEY_START and BPM fields).
