@@ -40,7 +40,7 @@ public class NoSeg extends Segmentation {
 	@Override
 	public ArrayList<Integer> getSegments(ArrayList<Float> a, Parameters params) {
 		ArrayList<Integer> val = new ArrayList<Integer>(1);
-		val.add(new Integer(0));
+		val.add(Integer.valueOf(0));
 		return val;
 	}
 	

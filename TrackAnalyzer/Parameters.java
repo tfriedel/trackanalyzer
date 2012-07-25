@@ -65,7 +65,7 @@ public class Parameters {
 		SILENCE
 	}
 
-	public static String camelot_key[] = {
+	public final static String camelot_key[] = {
 		"11B","8A",
 		"6B", "3A",
 		"1B", "10A",

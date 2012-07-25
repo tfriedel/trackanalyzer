@@ -35,7 +35,6 @@ public class FftwAnalyser extends SpectrumAnalyser {
 	private double[] fftInput;
 	private double[] fftResult;
 	private ArrayList<Float> window;
-	private int sizeofDouble = 8;
 	private final DoubleFFT_1D fft;
 
 	public FftwAnalyser(int f, Parameters params) throws Exception {

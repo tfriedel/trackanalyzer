@@ -45,7 +45,7 @@ public class TrackAnalyzer {
 		assert wavoutput.getName().endsWith(".wav");
 		AudioAttributes audio = new AudioAttributes();
 		audio.setCodec("pcm_s16le");
-		audio.setChannels(new Integer(1));
+		audio.setChannels(Integer.valueOf(1));
 		audio.setSamplingRate(new Integer(4410));
 		EncodingAttributes attrs = new EncodingAttributes();
 		attrs.setFormat("wav");
