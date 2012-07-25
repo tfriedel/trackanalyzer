@@ -1,64 +1,33 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+/*************************************************************************
+
+  Copyright 2012 Ibrahim Sha'ath
+
+  This file is part of LibKeyFinder.
+
+  LibKeyFinder is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  LibKeyFinder is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with LibKeyFinder.  If not, see <http://www.gnu.org/licenses/>.
+
+*************************************************************************/
+
+/************************************************************************
+ This file was modified/ported to Java in 2012 by Thomas Friedel
+************************************************************************/ 
 package TrackAnalyzer;
 
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-/*
- * import com.sun.jna.NativeLong; import com.sun.jna.Pointer; / import
- * java.util.ArrayList; /* import fftw3.FFTW3Library; import
- * fftw3.FFTW3Library.fftw_plan; import java.nio.DoubleBuffer;
- */
-/**
- *
- * @author Thomas
- */
-/*
- * public class FftwAnalyser extends SpectrumAnalyser { private int
- * fftFrameSize; private FftPostProcessor pp; private Pointer fftInput; private
- * Pointer fftResult; private DoubleBuffer inbuf; private DoubleBuffer
- * resultbuf; private ArrayList<Float> window; public FFTW3Library fftw =
- * FFTW3Library.INSTANCE; private int sizeofDouble = 8; private final fftw_plan
- * fftPlan;
- *
- * public FftwAnalyser(int f, Parameters params) throws Exception { super(f,
- * params); fftFrameSize = params.getFftFrameSize(); pp =
- * FftPostProcessor.getFftPostProcessor(f, params); //fftInput =
- * (fftw_complex*)fftw.fftw_malloc(sizeof(fftw_complex)*fftFrameSize); fftInput
- * = fftw.fftw_malloc(new NativeLong(sizeofDouble*fftFrameSize)); //fftResult =
- * (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*fftFrameSize); fftResult =
- * fftw.fftw_malloc(new NativeLong(sizeofDouble*fftFrameSize)); inbuf =
- * fftInput.getByteBuffer(0, sizeofDouble * fftFrameSize).asDoubleBuffer();
- * resultbuf = fftResult.getByteBuffer(0, sizeofDouble *
- * fftFrameSize).asDoubleBuffer(); // plan 1-dimensional DFT //fftPlan =
- * fftw_plan_dft_1d(fftFrameSize, fftInput, fftResult, FFTW_FORWARD,
- * FFTW_ESTIMATE); fftPlan = fftw.fftw_plan_dft_1d(fftFrameSize, inbuf,
- * resultbuf, FFTW3Library.FFTW_FORWARD, FFTW3Library.FFTW_ESTIMATE); // prep
- * temporal window function WindowFunction wf =
- * WindowFunction.getWindowFunction(params.getTemporalWindow()); window = new
- * ArrayList<Float>(fftFrameSize); for (int i=0; i<fftFrameSize; i++){
- * window.add( wf.window(i,fftFrameSize)); }
- *
- * }
- * public Chromagram chromagram(AudioData audio) { //@todo lock
- * //boost::mutex::scoped_lock lock(analyserMutex); Chromagram ch = new
- * Chromagram((audio.getSampleCount()/hopSize) + 1,bins); for (int i = 0; i <
- * audio.getSampleCount(); i += hopSize){ for (int j = 0; j < fftFrameSize;
- * j++){ if(i+j < audio.getSampleCount()) fftInput[j][0] = (float)
- * (audio.getSample(i+j) * window.get(j)); // real part, windowed else
- * fftInput[j][0] = (float)0.0; // zero-pad if no PCM data remaining
- * fftInput[j][1] = (float) 0.0; // zero out imaginary part }
- * fftw_execute(fftPlan); ArrayList<Float> cv = pp.chromaVector(fftResult); for
- * (int j=0; j<bins; j++) ch.setMagnitude(i/hopSize,j,cv.get(j)); } return ch;
- *
- * }
- *
- * }
- */
 public class FftwAnalyser extends SpectrumAnalyser {
 
 	private int fftFrameSize;

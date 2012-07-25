@@ -18,6 +18,7 @@
 	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+/* This file was modified in 2012 by Thomas Friedel */
 package at.ofai.music.audio;
 
 /** Class for computing a windowed fast Fourier transform.
