@@ -532,6 +532,7 @@ public class EventList implements Serializable {
 	} // writeBeatsAsText()
 
 	public double getBPM() {
+        double maxbpm = 190;
 		ArrayList<Double> l = new ArrayList<Double>();
 		for (Iterator<Event> it = iterator(); it.hasNext(); ) {
 			Event e = it.next();
@@ -546,6 +547,9 @@ public class EventList implements Serializable {
 			mean = sum/(l.size()-1);
 		}
 		double bpm = 60/mean;
+        if (bpm > maxbpm) {
+            bpm = bpm/2;
+        }
 		return bpm;
 	}
 			
