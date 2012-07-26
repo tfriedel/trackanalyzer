@@ -1,35 +1,40 @@
-/*************************************************************************
-
-  Copyright 2012 Thomas Friedel
-
-  This file is part of TrackAnalyzer.
-
-  TrackAnalyzer is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  TrackAnalyzer is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with TrackAnalyzer.  If not, see <http://www.gnu.org/licenses/>.
-
-*************************************************************************/
-
+/**
+ * ***********************************************************************
+ *
+ * Copyright 2012 Thomas Friedel
+ *
+ * This file is part of TrackAnalyzer.
+ *
+ * TrackAnalyzer is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option) any
+ * later version.
+ *
+ * TrackAnalyzer is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * TrackAnalyzer. If not, see <http://www.gnu.org/licenses/>.
+ *
+ ************************************************************************
+ */
 package TrackAnalyzer;
 
 import at.ofai.music.beatroot.BeatRoot;
 import it.sauronsoftware.jave.*;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotWriteException;
@@ -41,6 +46,73 @@ import org.jaudiotagger.tag.id3.framebody.FrameBodyTXXX;
 
 public class TrackAnalyzer {
 
+	boolean logging;
+	boolean writeTags;
+	BufferedWriter logger;
+	ArrayList<String> filenames = new ArrayList<String>();
+	public final KeyFinder k;
+	public final Parameters p;
+
+	TrackAnalyzer(String[] args) throws Exception {
+		logging = true;
+		writeTags = true;
+		if (args.length < 1) {
+			System.out.println("usage: TrackAnalyzer inputfile.mp3");
+			System.out.println("    or TrackAnalyzer -l filelist.txt");
+			System.exit(-1);
+		}
+		// we have a list, read all the filenames in the list and 
+		// collect them in 'filenames'
+		if (args[0].equals("-l")) {
+			assert (args.length > 1);
+			try {
+				//use buffering, reading one line at a time
+				//FileReader always assumes default encoding is OK!
+				BufferedReader input = new BufferedReader(new FileReader(new File(args[1])));
+				try {
+					String line = null; //not declared within while loop
+						/*
+					 * readLine is a bit quirky :
+					 * it returns the content of a line MINUS the newline.
+					 * it returns null only for the END of the stream.
+					 * it returns an empty String if two newlines appear in a row.
+					 */
+					while ((line = input.readLine()) != null) {
+						filenames.add(line);
+					}
+				} finally {
+					input.close();
+				}
+			} catch (IOException ex) {
+				ex.printStackTrace();
+				System.exit(-1);
+			}
+		} else {
+			// we don't have a list, but a single audiofile. append it to
+			// the empty list
+			filenames.add(args[0]);
+		}
+
+		try {
+			logger = new BufferedWriter(new FileWriter("c:\\temp\\TrackAnalyezerLog.txt"));
+		} catch (IOException ex) {
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+		}
+		k = new KeyFinder();
+		p = new Parameters();
+		p.setHopSize(8192);
+	}
+
+	/**
+	 * Decodes an audio file (mp3, flac, wav, etc. everything which can be
+	 * decoded by ffmpeg.
+	 *
+	 * @param input an audio file which will be decoded to wav
+	 * @param wavoutput the output wav file
+	 * @throws IllegalArgumentException
+	 * @throws InputFormatException
+	 * @throws EncoderException
+	 */
 	public static void decodeAudioFile(File input, File wavoutput) throws IllegalArgumentException, InputFormatException, EncoderException {
 		assert wavoutput.getName().endsWith(".wav");
 		AudioAttributes audio = new AudioAttributes();
@@ -54,113 +126,124 @@ public class TrackAnalyzer {
 		encoder.encode(input, wavoutput, attrs);
 	}
 
-	public static void main(String[] args) throws Exception {
-		boolean needsDownsampling = true;
-		boolean writeTags = true;
-		String wavfilename;
-		ArrayList<String> filenames = new ArrayList<String>();
-		if (args.length < 1) {
-			System.out.println("usage: TrackAnalyzer inputfile.mp3");
-			System.out.println("    or TrackAnalyzer -l filelist.txt");
-		} else {
-			// we have a list, read all the filenames in the list and 
-			// collect them in 'filenames'
-			if (args[0].equals("-l")) {
-				assert (args.length > 1);
-				try {
-					//use buffering, reading one line at a time
-					//FileReader always assumes default encoding is OK!
-					BufferedReader input = new BufferedReader(new FileReader(new File(args[1])));
-					try {
-						String line = null; //not declared within while loop
-        				/*
-						 * readLine is a bit quirky :
-						 * it returns the content of a line MINUS the newline.
-						 * it returns null only for the END of the stream.
-						 * it returns an empty String if two newlines appear in a row.
-						 */
-						while ((line = input.readLine()) != null) {
-							filenames.add(line);
-						}
-					} finally {
-						input.close();
-					}
-				} catch (IOException ex) {
-					ex.printStackTrace();
-					System.exit(-1);
-				}
-			} else {
-				// we don't have a list, but a single audiofile. append it to
-				// the empty list
-				filenames.add(args[0]);
+	/**
+	 * this writes a line to a txt file with the result of the detection process
+	 * for one file.
+	 *
+	 * @param filename the filename of the audio file we just processed
+	 * @param key the result of the key detector (or "-")
+	 * @param bpm the result of the bpm detector (or "-")
+	 * @param wroteTags true if tags were written successfully
+	 */
+	public void logDetectionResult(String filename, String key, String bpm, boolean wroteTags) {
+		if (logging) {
+			try {
+				logger.write(filename + ";" + key + ";" + bpm + ";" + wroteTags);
+				logger.newLine();
+				logger.flush();
+			} catch (IOException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 			}
-			
-			for (String filename : filenames) {
-				AudioData data = new AudioData();
-				File temp = null;
-				if (!filename.endsWith(".wav")) {
+		}
+	}
+
+	/**
+	 * This is the main loop of the program. For every file in the filenames
+	 * list, the file gets decoded and downsampled to a 4410 hz mono wav file.
+	 * Then key and bpm detectors are run, the result is logged in a txt file
+	 * and written to the tag if possible.
+	 */
+	public void run() {
+		boolean needsDownsampling = true;
+		String wavfilename;
+
+		for (String filename : filenames) {
+			AudioData data = new AudioData();
+			File temp = null;
+			if (!filename.endsWith(".wav")) {
+				try {
 					temp = File.createTempFile("keyfinder", ".wav");
 					wavfilename = temp.getAbsolutePath();
 					// Delete temp file when program exits.
 					temp.deleteOnExit();
 					decodeAudioFile(new File(filename), temp);
-					needsDownsampling = false;
-				} else {
-					wavfilename = filename;
-					needsDownsampling = true;
+				} catch (Exception ex) {
+					logDetectionResult(filename, "-", "-", false);
+					break;
 				}
+				needsDownsampling = false;
+			} else {
+				wavfilename = filename;
+				needsDownsampling = true;
+			}
 
+			try {
+				data.loadFromAudioFile(wavfilename);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			if (needsDownsampling) {
+				PrimaryDownsampler downsampler = new PrimaryDownsampler();
 				try {
-					data.loadFromAudioFile(wavfilename);
+					data.reduceToMono();
+					data = downsampler.downsample(data, 10);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+			}
+			//data.writeWavFile("C:\\temp\\output.wav");
 
-				if (needsDownsampling) {
-					PrimaryDownsampler downsampler = new PrimaryDownsampler();
-					try {
-						data.reduceToMono();
-						data = downsampler.downsample(data, 10);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-				//data.writeWavFile("C:\\temp\\output.wav");
-				KeyFinder k = new KeyFinder();
-				Parameters p = new Parameters();
-				p.setHopSize(8192);
-				KeyDetectionResult r = k.findKey(data, p);
-				System.out.println("filename: " + filename);
-				System.out.println("key: " + camelotKey(r.globalKeyEstimate));
+			KeyDetectionResult r;
+			try {
+				r = k.findKey(data, p);
+			} catch (Exception ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+				logDetectionResult(filename, "-", "-", false);
+				break;
+			}
+			System.out.println("filename: " + filename);
+			System.out.println("key: " + camelotKey(r.globalKeyEstimate));
 
-				// get bpm
-				double bpm = BeatRoot.getBPM(wavfilename);
-				String formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
-				System.out.printf("BPM: %s\n", formattedBpm);
+			// get bpm
+			double bpm = BeatRoot.getBPM(wavfilename);
+			String formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
+			System.out.printf("BPM: %s\n", formattedBpm);
 
-				if (writeTags) {
-					File file = new File(filename);
-					try {
-						AudioFile f = AudioFileIO.read(file);
-						if (filename.endsWith(".mp3")) {
-							if (!setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate))) {
-								throw new IOException("Error reading Tags");
-							}
+			if (writeTags) {
+				File file = new File(filename);
+				try {
+					AudioFile f = AudioFileIO.read(file);
+					if (filename.endsWith(".mp3")) {
+						if (!setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate))) {
+							throw new IOException("Error reading Tags");
 						}
-						Tag tag = f.getTag();
-						tag.setField(FieldKey.BPM, formattedBpm);
-						f.commit();
-					} catch (IOException e) {
-						System.out.println("problem with tags in file " + filename);
 					}
-					if (temp != null) {
-						temp.delete();
-					}
+					Tag tag = f.getTag();
+					tag.setField(FieldKey.BPM, formattedBpm);
+					f.commit();
+					logDetectionResult(filename, camelotKey(r.globalKeyEstimate), formattedBpm, true);
+				} catch (Exception e) {
+					System.out.println("problem with tags in file " + filename);
+					logDetectionResult(filename, camelotKey(r.globalKeyEstimate), formattedBpm, false);
 				}
 			}
-			System.exit(0);
-
+			if (temp != null) {
+				temp.delete();
+			}
 		}
+		try {
+			logger.close();
+		} catch (IOException ex) {
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+		}
+		System.exit(0);
+	}
+
+	public static void main(String[] args) throws Exception {
+		TrackAnalyzer ta = new TrackAnalyzer(args);
+		ta.run();
+
 	}
 
 	/**
@@ -224,6 +307,9 @@ public class TrackAnalyzer {
 		return true;
 	}
 
+	/**
+	 * @return a camelot key string representation of the key
+	 */
 	public static String camelotKey(Parameters.key_t key) {
 		return Parameters.camelot_key[key.ordinal()];
 	}
