@@ -33,6 +33,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jaudiotagger.audio.AudioFile;
@@ -40,9 +42,15 @@ import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotWriteException;
 import org.jaudiotagger.tag.FieldDataInvalidException;
 import org.jaudiotagger.tag.FieldKey;
+import org.jaudiotagger.tag.KeyNotFoundException;
 import org.jaudiotagger.tag.Tag;
+import org.jaudiotagger.tag.TagField;
+import org.jaudiotagger.tag.flac.FlacTag;
 import org.jaudiotagger.tag.id3.*;
 import org.jaudiotagger.tag.id3.framebody.FrameBodyTXXX;
+import org.jaudiotagger.tag.mp4.Mp4Tag;
+import org.jaudiotagger.tag.mp4.field.Mp4TagTextField;
+import org.jaudiotagger.tag.vorbiscomment.VorbisCommentTag;
 
 public class TrackAnalyzer {
 
@@ -105,7 +113,7 @@ public class TrackAnalyzer {
 
 	/**
 	 * Decodes an audio file (mp3, flac, wav, etc. everything which can be
-	 * decoded by ffmpeg.
+	 * decoded by ffmpeg) to a downsampled wav file.
 	 *
 	 * @param input an audio file which will be decoded to wav
 	 * @param wavoutput the output wav file
@@ -114,16 +122,32 @@ public class TrackAnalyzer {
 	 * @throws EncoderException
 	 */
 	public static void decodeAudioFile(File input, File wavoutput) throws IllegalArgumentException, InputFormatException, EncoderException {
+		decodeAudioFile(input, wavoutput, 4410);
+	}
+
+	/**
+	 * Decodes an audio file (mp3, flac, wav, etc. everything which can be
+	 * decoded by ffmpeg) to a downsampled wav file.
+	 *
+	 * @param input an audio file which will be decoded to wav
+	 * @param wavoutput the output wav file
+	 * @param samplerate the samplerate of the output wav.
+	 * @throws IllegalArgumentException
+	 * @throws InputFormatException
+	 * @throws EncoderException
+	 */
+	public static void decodeAudioFile(File input, File wavoutput, int samplerate) throws IllegalArgumentException, InputFormatException, EncoderException {
 		assert wavoutput.getName().endsWith(".wav");
 		AudioAttributes audio = new AudioAttributes();
 		audio.setCodec("pcm_s16le");
 		audio.setChannels(Integer.valueOf(1));
-		audio.setSamplingRate(new Integer(4410));
+		audio.setSamplingRate(new Integer(samplerate));
 		EncodingAttributes attrs = new EncodingAttributes();
 		attrs.setFormat("wav");
 		attrs.setAudioAttributes(audio);
 		Encoder encoder = new Encoder();
 		encoder.encode(input, wavoutput, attrs);
+
 	}
 
 	/**
@@ -156,26 +180,24 @@ public class TrackAnalyzer {
 	public void run() {
 		boolean needsDownsampling = true;
 		String wavfilename;
-
+		int nThreads = 2;
+		ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
+		
+		nextFile:
 		for (String filename : filenames) {
 			AudioData data = new AudioData();
 			File temp = null;
-			if (!filename.endsWith(".wav")) {
-				try {
-					temp = File.createTempFile("keyfinder", ".wav");
-					wavfilename = temp.getAbsolutePath();
-					// Delete temp file when program exits.
-					temp.deleteOnExit();
-					decodeAudioFile(new File(filename), temp);
-				} catch (Exception ex) {
-					logDetectionResult(filename, "-", "-", false);
-					break;
-				}
-				needsDownsampling = false;
-			} else {
-				wavfilename = filename;
-				needsDownsampling = true;
+			try {
+				temp = File.createTempFile("keyfinder", ".wav");
+				wavfilename = temp.getAbsolutePath();
+				// Delete temp file when program exits.
+				temp.deleteOnExit();
+				decodeAudioFile(new File(filename), temp);
+			} catch (Exception ex) {
+				logDetectionResult(filename, "-", "-", false);
+				continue nextFile;
 			}
+			needsDownsampling = false;
 
 			try {
 				data.loadFromAudioFile(wavfilename);
@@ -183,15 +205,17 @@ public class TrackAnalyzer {
 				e.printStackTrace();
 			}
 
-			if (needsDownsampling) {
-				PrimaryDownsampler downsampler = new PrimaryDownsampler();
-				try {
-					data.reduceToMono();
-					data = downsampler.downsample(data, 10);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
+			/*
+			 if (needsDownsampling) {
+			 PrimaryDownsampler downsampler = new PrimaryDownsampler();
+			 try {
+			 data.reduceToMono();
+			 data = downsampler.downsample(data, 10);
+			 } catch (Exception e) {
+			 e.printStackTrace();
+			 }
+			 }
+			 */
 			//data.writeWavFile("C:\\temp\\output.wav");
 
 			KeyDetectionResult r;
@@ -200,24 +224,39 @@ public class TrackAnalyzer {
 			} catch (Exception ex) {
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 				logDetectionResult(filename, "-", "-", false);
-				break;
+				continue nextFile;
 			}
 			System.out.println("filename: " + filename);
 			System.out.println("key: " + camelotKey(r.globalKeyEstimate));
 
 			// get bpm
 			double bpm = BeatRoot.getBPM(wavfilename);
-			String formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
+			if (Double.isNaN(bpm)) {
+				try {
+					// bpm couldn't be detected. try again with a higher quality wav.
+					Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm couldn't be detected for " + filename + ". Trying again.");
+					decodeAudioFile(new File(filename), temp, 44100);
+					bpm = BeatRoot.getBPM(wavfilename);
+					if (Double.isNaN(bpm)) {
+						Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm still couldn't be detected for " + filename + ".");
+					} else {
+						Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.INFO, "bpm now detected correctly for " + filename);
+					}
+				} catch (Exception ex) {
+					logDetectionResult(filename, "-", "-", false);
+				}
+			}
+			String formattedBpm = "0";
+			if (!Double.isNaN(bpm))
+				formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
 			System.out.printf("BPM: %s\n", formattedBpm);
 
 			if (writeTags) {
 				File file = new File(filename);
 				try {
 					AudioFile f = AudioFileIO.read(file);
-					if (filename.endsWith(".mp3")) {
-						if (!setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate))) {
-							throw new IOException("Error reading Tags");
-						}
+					if (!setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate))) {
+						throw new IOException("Error reading Tags");
 					}
 					Tag tag = f.getTag();
 					tag.setField(FieldKey.BPM, formattedBpm);
@@ -241,6 +280,7 @@ public class TrackAnalyzer {
 	}
 
 	public static void main(String[] args) throws Exception {
+		Logger.getLogger(TrackAnalyzer.class.getName()).setLevel(Level.ALL);
 		TrackAnalyzer ta = new TrackAnalyzer(args);
 		ta.run();
 
@@ -264,40 +304,74 @@ public class TrackAnalyzer {
 		// Get the tag from the audio file
 		// If there is no ID3Tag create an ID3v2.3 tag
 		Tag tag = audioFile.getTagOrCreateAndSetDefault();
-		// If there is only a ID3v1 tag, copy data into new ID3v2.3 tag
-		if (!(tag instanceof ID3v23Tag || tag instanceof ID3v24Tag)) {
-			Tag newTagV23 = null;
-			if (tag instanceof ID3v1Tag) {
-				newTagV23 = new ID3v23Tag((ID3v1Tag) audioFile.getTag()); // Copy old tag data               
+		if (tag instanceof AbstractID3Tag) {
+			// If there is only a ID3v1 tag, copy data into new ID3v2.3 tag
+			if (!(tag instanceof ID3v23Tag || tag instanceof ID3v24Tag)) {
+				Tag newTagV23 = null;
+				if (tag instanceof ID3v1Tag) {
+					newTagV23 = new ID3v23Tag((ID3v1Tag) audioFile.getTag()); // Copy old tag data               
+				}
+				if (tag instanceof ID3v22Tag) {
+					newTagV23 = new ID3v23Tag((ID3v22Tag) audioFile.getTag()); // Copy old tag data              
+				}
+				audioFile.setTag(newTagV23);
 			}
-			if (tag instanceof ID3v22Tag) {
-				newTagV23 = new ID3v23Tag((ID3v11Tag) audioFile.getTag()); // Copy old tag data              
-			}
-			audioFile.setTag(newTagV23);
-		}
 
-		AbstractID3v2Frame frame = null;
-		if (tag instanceof ID3v23Tag) {
-			if (((ID3v23Tag) audioFile.getTag()).getInvalidFrames() > 0) {
-				throw new IOException("read some invalid frames!");
+			AbstractID3v2Frame frame = null;
+			if (tag instanceof ID3v23Tag) {
+				if (((ID3v23Tag) audioFile.getTag()).getInvalidFrames() > 0) {
+					throw new IOException("read some invalid frames!");
+				}
+				frame = new ID3v23Frame("TXXX");
+			} else if (tag instanceof ID3v24Tag) {
+				if (((ID3v24Tag) audioFile.getTag()).getInvalidFrames() > 0) {
+					throw new IOException("read some invalid frames!");
+				}
+				frame = new ID3v24Frame("TXXX");
 			}
-			frame = new ID3v23Frame("TXXX");
-		} else if (tag instanceof ID3v24Tag) {
-			if (((ID3v24Tag) audioFile.getTag()).getInvalidFrames() > 0) {
-				throw new IOException("read some invalid frames!");
+
+			frame.setBody(txxxBody);
+
+			try {
+				tag.setField(frame);
+			} catch (FieldDataInvalidException e) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, e);
+				return false;
 			}
-			frame = new ID3v24Frame("TXXX");
-		}
-
-		frame.setBody(txxxBody);
-
-		try {
-			tag.setField(frame);
-		} catch (FieldDataInvalidException e) {
-			e.printStackTrace();
+		} else if (tag instanceof FlacTag) {
+			try {
+				((FlacTag) tag).setField(description, text);
+			} catch (KeyNotFoundException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+				return false;
+			} catch (FieldDataInvalidException ex) {
+				return false;
+			}
+		} else if (tag instanceof Mp4Tag) {
+			TagField field = new Mp4TagTextField(description, text);
+			try {
+				tag.setField(field);
+			} catch (FieldDataInvalidException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+				return false;
+			}
+		} else if (tag instanceof VorbisCommentTag) {
+			try {
+				((VorbisCommentTag) tag).setField(description, text);
+			} catch (KeyNotFoundException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+				return false;
+			} catch (FieldDataInvalidException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+				return false;
+			}
+		} else {
+			// tag not implented
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't write key information for {0} to tag, because this format is not supported.", audioFile.getFile().getName());
 			return false;
 		}
-
+		
+		// write changes in tag to file
 		try {
 			audioFile.commit();
 		} catch (CannotWriteException e) {
