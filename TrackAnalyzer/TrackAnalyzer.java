@@ -52,7 +52,9 @@ import org.jaudiotagger.tag.TagField;
 import org.jaudiotagger.tag.flac.FlacTag;
 import org.jaudiotagger.tag.id3.*;
 import org.jaudiotagger.tag.id3.framebody.FrameBodyTXXX;
+import org.jaudiotagger.tag.mp4.Mp4FieldKey;
 import org.jaudiotagger.tag.mp4.Mp4Tag;
+import org.jaudiotagger.tag.mp4.field.Mp4TagReverseDnsField;
 import org.jaudiotagger.tag.mp4.field.Mp4TagTextField;
 import org.jaudiotagger.tag.vorbiscomment.VorbisCommentTag;
 
@@ -186,7 +188,7 @@ public class TrackAnalyzer {
 		@Override
 		public Boolean call() {
 			boolean needsDownsampling = true;
-			String wavfilename;
+			String wavfilename = "";
 			AudioData data = new AudioData();
 			File temp = null;
 			try {
@@ -196,8 +198,11 @@ public class TrackAnalyzer {
 				temp.deleteOnExit();
 				decodeAudioFile(new File(filename), temp);
 			} catch (Exception ex) {
-				logDetectionResult(filename, "-", "-", false);
-				return false;
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "error while decoding" + filename + ".");
+				if (temp.length() == 0) {
+					logDetectionResult(filename, "-", "-", false);
+					return false;
+				}
 			}
 			needsDownsampling = false;
 
@@ -259,9 +264,14 @@ public class TrackAnalyzer {
 				try {
 					AudioFile f = AudioFileIO.read(file);
 					if (!setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate))) {
-						throw new IOException("Error reading Tags");
+						throw new IOException("Error writing Key Tag");
 					}
 					Tag tag = f.getTag();
+					if (tag instanceof Mp4Tag) {
+						if (!setCustomTag(f, "BPM", formattedBpm)) {
+							throw new IOException("Error writing BPM Tag");
+						}
+					}
 					tag.setField(FieldKey.BPM, formattedBpm);
 					f.commit();
 					logDetectionResult(filename, camelotKey(r.globalKeyEstimate), formattedBpm, true);
@@ -294,9 +304,9 @@ public class TrackAnalyzer {
 			//new worker thread
 			pool.submit(new WorkTrack(filename));
 		}
-		for (int i=0; i<filenames.size();i++) {
+		for (int i = 0; i < filenames.size(); i++) {
 			Boolean result;
-		 	//Compute the result
+			//Compute the result
 			try {
 				result = pool.take().get();
 			} catch (InterruptedException e) {
@@ -382,7 +392,12 @@ public class TrackAnalyzer {
 				return false;
 			}
 		} else if (tag instanceof Mp4Tag) {
-			TagField field = new Mp4TagTextField(description, text);
+			//TagField field = new Mp4TagTextField("----:com.apple.iTunes:"+description, text);
+			TagField field;
+			field = new Mp4TagReverseDnsField(Mp4TagReverseDnsField.IDENTIFIER
+					+ ":" + "com.apple.iTunes" + ":" + description,
+					"com.apple.iTunes", description, text);
+			//TagField field = new Mp4TagTextField(description, text);
 			try {
 				tag.setField(field);
 			} catch (FieldDataInvalidException ex) {
@@ -401,7 +416,7 @@ public class TrackAnalyzer {
 			}
 		} else {
 			// tag not implented
-			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't write key information for "+audioFile.getFile().getName()+" to tag, because this format is not supported.");
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't write key information for " + audioFile.getFile().getName() + " to tag, because this format is not supported.");
 			return false;
 		}
 
