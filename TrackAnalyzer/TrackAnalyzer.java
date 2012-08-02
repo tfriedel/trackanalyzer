@@ -177,8 +177,10 @@ public class TrackAnalyzer {
 		}
 	}
 
+	/**
+	 * one worker thread for analyzing a track
+	 */
 	private final class WorkTrack implements Callable<Boolean> {
-
 		String filename;
 
 		WorkTrack(String filename) {
@@ -187,7 +189,46 @@ public class TrackAnalyzer {
 
 		@Override
 		public Boolean call() {
-			boolean needsDownsampling = true;
+			return analyzeTrack(filename, writeTags);
+		}
+	}
+
+	/**
+	 * writes bpm and key to KEY_START and BPM fields in the tag 
+	 * @param filename
+	 * @param formattedBpm
+	 * @param key 
+	 */
+	public boolean writeTags(String filename, String formattedBpm, String key) {
+		File file = new File(filename);
+		try {
+			AudioFile f = AudioFileIO.read(file);
+			if (!setCustomTag(f, "KEY_START", key)) {
+				throw new IOException("Error writing Key Tag");
+			}
+			Tag tag = f.getTag();
+			if (tag instanceof Mp4Tag) {
+				if (!setCustomTag(f, "BPM", formattedBpm)) {
+					throw new IOException("Error writing BPM Tag");
+				}
+			}
+			tag.setField(FieldKey.BPM, formattedBpm);
+			f.commit();
+			logDetectionResult(filename, key, formattedBpm, true);
+			return true;
+		} catch (Exception e) {
+			System.out.println("problem with tags in file " + filename);
+			logDetectionResult(filename, key, formattedBpm, false);
+			return false;
+		}
+	}
+
+	/**
+	 * runs key and bpm detector on @filename, optionally writes tags
+	 * @param filename
+	 * @return 
+	 */
+	public boolean analyzeTrack(String filename, boolean writeTags) {
 			String wavfilename = "";
 			AudioData data = new AudioData();
 			File temp = null;
@@ -204,37 +245,16 @@ public class TrackAnalyzer {
 					return false;
 				}
 			}
-			needsDownsampling = false;
-
-			try {
-				data.loadFromAudioFile(wavfilename);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
-			/*
-			 if (needsDownsampling) {
-			 PrimaryDownsampler downsampler = new PrimaryDownsampler();
-			 try {
-			 data.reduceToMono();
-			 data = downsampler.downsample(data, 10);
-			 } catch (Exception e) {
-			 e.printStackTrace();
-			 }
-			 }
-			 */
-			//data.writeWavFile("C:\\temp\\output.wav");
 
 			KeyDetectionResult r;
 			try {
+				data.loadFromAudioFile(wavfilename);
 				r = k.findKey(data, p);
 			} catch (Exception ex) {
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 				logDetectionResult(filename, "-", "-", false);
 				return false;
 			}
-			System.out.println("filename: " + filename);
-			System.out.println("key: " + camelotKey(r.globalKeyEstimate));
 
 			// get bpm
 			double bpm = BeatRoot.getBPM(wavfilename);
@@ -257,36 +277,16 @@ public class TrackAnalyzer {
 			if (!Double.isNaN(bpm)) {
 				formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
 			}
-			System.out.printf("BPM: %s\n", formattedBpm);
+			System.out.printf("%s key: %s BPM: %s\n", filename, camelotKey(r.globalKeyEstimate), formattedBpm);
 
 			if (writeTags) {
-				File file = new File(filename);
-				try {
-					AudioFile f = AudioFileIO.read(file);
-					if (!setCustomTag(f, "KEY_START", camelotKey(r.globalKeyEstimate))) {
-						throw new IOException("Error writing Key Tag");
-					}
-					Tag tag = f.getTag();
-					if (tag instanceof Mp4Tag) {
-						if (!setCustomTag(f, "BPM", formattedBpm)) {
-							throw new IOException("Error writing BPM Tag");
-						}
-					}
-					tag.setField(FieldKey.BPM, formattedBpm);
-					f.commit();
-					logDetectionResult(filename, camelotKey(r.globalKeyEstimate), formattedBpm, true);
-				} catch (Exception e) {
-					System.out.println("problem with tags in file " + filename);
-					logDetectionResult(filename, camelotKey(r.globalKeyEstimate), formattedBpm, false);
-				}
+				writeTags(filename, formattedBpm, camelotKey(r.globalKeyEstimate));
 			}
 			if (temp != null) {
 				temp.delete();
 			}
 			return true;
-		}
 	}
-
 	/**
 	 * This is the main loop of the program. For every file in the filenames
 	 * list, the file gets decoded and downsampled to a 4410 hz mono wav file.
