@@ -28,6 +28,13 @@ import java.util.ArrayList;
 
 public class Parameters {
 
+	/**
+	 * @return a camelot key string representation of the key
+	 */
+	public static String camelotKey(Parameters.key_t key) {
+		return Parameters.camelot_key[key.ordinal()];
+	}
+
 	private boolean offsetToC;
 	private int hopSize;
 	private int fftFrameSize;

@@ -181,6 +181,7 @@ public class TrackAnalyzer {
 	 * one worker thread for analyzing a track
 	 */
 	private final class WorkTrack implements Callable<Boolean> {
+
 		String filename;
 
 		WorkTrack(String filename) {
@@ -194,10 +195,11 @@ public class TrackAnalyzer {
 	}
 
 	/**
-	 * writes bpm and key to KEY_START and BPM fields in the tag 
+	 * writes bpm and key to KEY_START and BPM fields in the tag
+	 *
 	 * @param filename
 	 * @param formattedBpm
-	 * @param key 
+	 * @param key
 	 */
 	public boolean writeTags(String filename, String formattedBpm, String key) {
 		File file = new File(filename);
@@ -224,69 +226,72 @@ public class TrackAnalyzer {
 	}
 
 	/**
-	 * runs key and bpm detector on @filename, optionally writes tags
+	 * runs key and bpm detector on
+	 *
+	 * @filename, optionally writes tags
 	 * @param filename
-	 * @return 
+	 * @return
 	 */
 	public boolean analyzeTrack(String filename, boolean writeTags) {
-			String wavfilename = "";
-			AudioData data = new AudioData();
-			File temp = null;
-			try {
-				temp = File.createTempFile("keyfinder", ".wav");
-				wavfilename = temp.getAbsolutePath();
-				// Delete temp file when program exits.
-				temp.deleteOnExit();
-				decodeAudioFile(new File(filename), temp);
-			} catch (Exception ex) {
-				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "error while decoding" + filename + ".");
-				if (temp.length() == 0) {
-					logDetectionResult(filename, "-", "-", false);
-					return false;
-				}
-			}
-
-			KeyDetectionResult r;
-			try {
-				data.loadFromAudioFile(wavfilename);
-				r = k.findKey(data, p);
-			} catch (Exception ex) {
-				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+		String wavfilename = "";
+		AudioData data = new AudioData();
+		File temp = null;
+		try {
+			temp = File.createTempFile("keyfinder", ".wav");
+			wavfilename = temp.getAbsolutePath();
+			// Delete temp file when program exits.
+			temp.deleteOnExit();
+			decodeAudioFile(new File(filename), temp);
+		} catch (Exception ex) {
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "error while decoding" + filename + ".");
+			if (temp.length() == 0) {
 				logDetectionResult(filename, "-", "-", false);
 				return false;
 			}
+		}
 
-			// get bpm
-			double bpm = BeatRoot.getBPM(wavfilename);
-			if (Double.isNaN(bpm)) {
-				try {
-					// bpm couldn't be detected. try again with a higher quality wav.
-					Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm couldn't be detected for " + filename + ". Trying again.");
-					decodeAudioFile(new File(filename), temp, 44100);
-					bpm = BeatRoot.getBPM(wavfilename);
-					if (Double.isNaN(bpm)) {
-						Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm still couldn't be detected for " + filename + ".");
-					} else {
-						Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.INFO, "bpm now detected correctly for " + filename);
-					}
-				} catch (Exception ex) {
-					logDetectionResult(filename, "-", "-", false);
+		KeyDetectionResult r;
+		try {
+			data.loadFromAudioFile(wavfilename);
+			r = k.findKey(data, p);
+		} catch (Exception ex) {
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+			logDetectionResult(filename, "-", "-", false);
+			return false;
+		}
+
+		// get bpm
+		double bpm = BeatRoot.getBPM(wavfilename);
+		if (Double.isNaN(bpm)) {
+			try {
+				// bpm couldn't be detected. try again with a higher quality wav.
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm couldn't be detected for " + filename + ". Trying again.");
+				decodeAudioFile(new File(filename), temp, 44100);
+				bpm = BeatRoot.getBPM(wavfilename);
+				if (Double.isNaN(bpm)) {
+					Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm still couldn't be detected for " + filename + ".");
+				} else {
+					Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.INFO, "bpm now detected correctly for " + filename);
 				}
+			} catch (Exception ex) {
+				logDetectionResult(filename, "-", "-", false);
 			}
-			String formattedBpm = "0";
-			if (!Double.isNaN(bpm)) {
-				formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
-			}
-			System.out.printf("%s key: %s BPM: %s\n", filename, camelotKey(r.globalKeyEstimate), formattedBpm);
+		}
+		String formattedBpm = "0";
+		if (!Double.isNaN(bpm)) {
+			formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
+		}
+		System.out.printf("%s key: %s BPM: %s\n", filename, Parameters.camelotKey(r.globalKeyEstimate), formattedBpm);
 
-			if (writeTags) {
-				writeTags(filename, formattedBpm, camelotKey(r.globalKeyEstimate));
-			}
-			if (temp != null) {
-				temp.delete();
-			}
-			return true;
+		if (writeTags) {
+			writeTags(filename, formattedBpm, Parameters.camelotKey(r.globalKeyEstimate));
+		}
+		if (temp != null) {
+			temp.delete();
+		}
+		return true;
 	}
+
 	/**
 	 * This is the main loop of the program. For every file in the filenames
 	 * list, the file gets decoded and downsampled to a 4410 hz mono wav file.
@@ -294,7 +299,7 @@ public class TrackAnalyzer {
 	 * and written to the tag if possible.
 	 */
 	public void run() throws ExecutionException {
-		int nThreads = 2; //@todo get number of processors and put in here
+		int nThreads = Runtime.getRuntime().availableProcessors();
 		ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
 		CompletionService<Boolean> pool;
 		pool = new ExecutorCompletionService<Boolean>(threadPool);
@@ -428,12 +433,5 @@ public class TrackAnalyzer {
 			return false;
 		}
 		return true;
-	}
-
-	/**
-	 * @return a camelot key string representation of the key
-	 */
-	public static String camelotKey(Parameters.key_t key) {
-		return Parameters.camelot_key[key.ordinal()];
 	}
 }
