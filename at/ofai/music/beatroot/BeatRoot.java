@@ -393,9 +393,24 @@ public class BeatRoot {
 		br.audioIn = filename;
 		br.audioProcessor.setInputFile(br.audioIn);
 		br.audioProcessor.processFile();
+		// filter peaks:
+	    // first value: threshold minimum value of peaks
+	    // second value: decayRate how quickly previous peaks are forgotten
+		double bpm;
+		br.audioProcessor.findOnsets(0.9, 0.84);
 		EventList annotated = null;
 		EventList beats = BeatTrackDisplay.beatTrack(br.audioProcessor.onsetList, annotated);
-		double bpm = beats.getBPM();
+		bpm = beats.getBPM();
+		if (Double.isNaN(bpm)) {
+			br.audioProcessor.findOnsets(0.4, 0.84);
+			beats = BeatTrackDisplay.beatTrack(br.audioProcessor.onsetList, annotated);
+			bpm = beats.getBPM();
+			if (Double.isNaN(bpm)) {
+				br.audioProcessor.findOnsets(0.1, 0.84);
+				beats = BeatTrackDisplay.beatTrack(br.audioProcessor.onsetList, annotated);
+				bpm = beats.getBPM();
+			}
+		}
 		return bpm;
 	}
 
@@ -513,7 +528,7 @@ public class BeatRoot {
 
 	/**
 	 * Entry point for BeatRoot application.
-	 *
+	 s
 	 * @param args Optional command line arguments (see constructor for details)
 	 */
 	public static void main(String[] args) {
