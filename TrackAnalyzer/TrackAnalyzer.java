@@ -33,6 +33,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -171,20 +175,18 @@ public class TrackAnalyzer {
 		}
 	}
 
-	/**
-	 * This is the main loop of the program. For every file in the filenames
-	 * list, the file gets decoded and downsampled to a 4410 hz mono wav file.
-	 * Then key and bpm detectors are run, the result is logged in a txt file
-	 * and written to the tag if possible.
-	 */
-	public void run() {
-		boolean needsDownsampling = true;
-		String wavfilename;
-		int nThreads = 2;
-		ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
-		
-		nextFile:
-		for (String filename : filenames) {
+	private final class WorkTrack implements Callable<Boolean> {
+
+		String filename;
+
+		WorkTrack(String filename) {
+			this.filename = filename;
+		}
+
+		@Override
+		public Boolean call() {
+			boolean needsDownsampling = true;
+			String wavfilename;
 			AudioData data = new AudioData();
 			File temp = null;
 			try {
@@ -195,7 +197,7 @@ public class TrackAnalyzer {
 				decodeAudioFile(new File(filename), temp);
 			} catch (Exception ex) {
 				logDetectionResult(filename, "-", "-", false);
-				continue nextFile;
+				return false;
 			}
 			needsDownsampling = false;
 
@@ -224,7 +226,7 @@ public class TrackAnalyzer {
 			} catch (Exception ex) {
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 				logDetectionResult(filename, "-", "-", false);
-				continue nextFile;
+				return false;
 			}
 			System.out.println("filename: " + filename);
 			System.out.println("key: " + camelotKey(r.globalKeyEstimate));
@@ -247,8 +249,9 @@ public class TrackAnalyzer {
 				}
 			}
 			String formattedBpm = "0";
-			if (!Double.isNaN(bpm))
+			if (!Double.isNaN(bpm)) {
 				formattedBpm = new DecimalFormat("#.#").format(bpm).replaceAll(",", ".");
+			}
 			System.out.printf("BPM: %s\n", formattedBpm);
 
 			if (writeTags) {
@@ -270,7 +273,37 @@ public class TrackAnalyzer {
 			if (temp != null) {
 				temp.delete();
 			}
+			return true;
 		}
+	}
+
+	/**
+	 * This is the main loop of the program. For every file in the filenames
+	 * list, the file gets decoded and downsampled to a 4410 hz mono wav file.
+	 * Then key and bpm detectors are run, the result is logged in a txt file
+	 * and written to the tag if possible.
+	 */
+	public void run() throws ExecutionException {
+		int nThreads = 2; //@todo get number of processors and put in here
+		ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
+		CompletionService<Boolean> pool;
+		pool = new ExecutorCompletionService<Boolean>(threadPool);
+
+		nextFile:
+		for (String filename : filenames) {
+			//new worker thread
+			pool.submit(new WorkTrack(filename));
+		}
+		for (int i=0; i<filenames.size();i++) {
+			Boolean result;
+		 	//Compute the result
+			try {
+				result = pool.take().get();
+			} catch (InterruptedException e) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, e);
+			}
+		}
+		threadPool.shutdown();
 		try {
 			logger.close();
 		} catch (IOException ex) {
@@ -370,7 +403,7 @@ public class TrackAnalyzer {
 			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't write key information for {0} to tag, because this format is not supported.", audioFile.getFile().getName());
 			return false;
 		}
-		
+
 		// write changes in tag to file
 		try {
 			audioFile.commit();
