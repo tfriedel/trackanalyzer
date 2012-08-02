@@ -348,6 +348,7 @@ public class TrackAnalyzer {
 					newTagV23 = new ID3v23Tag((ID3v22Tag) audioFile.getTag()); // Copy old tag data              
 				}
 				audioFile.setTag(newTagV23);
+				tag = newTagV23;
 			}
 
 			AbstractID3v2Frame frame = null;
@@ -400,7 +401,7 @@ public class TrackAnalyzer {
 			}
 		} else {
 			// tag not implented
-			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't write key information for {0} to tag, because this format is not supported.", audioFile.getFile().getName());
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't write key information for "+audioFile.getFile().getName()+" to tag, because this format is not supported.");
 			return false;
 		}
 
