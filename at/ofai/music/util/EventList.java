@@ -47,6 +47,7 @@ import at.ofai.music.worm.Worm;
 import at.ofai.music.worm.WormFile;
 import at.ofai.music.worm.WormParameters;
 import java.util.ArrayList;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 // Adapted from eventList::readMatchFile in beatroot/src/eventMidi.cpp
 
@@ -538,15 +539,14 @@ public class EventList implements Serializable {
 			Event e = it.next();
 			l.add(e.keyDown);
 		}
-		double sum = 0;
-		double mean = 0;
-		if (l.size()>1) {
+		DescriptiveStatistics stats = new DescriptiveStatistics();
+		if (l.size()>1) 
 			for (int i=1;i<l.size();i++) {
-				sum += (l.get(i)-l.get(i-1));
+				stats.addValue(l.get(i)-l.get(i-1));
 			}
-			mean = sum/(l.size()-1);
-		}
-		double bpm = 60/mean;
+		
+		double median = stats.getPercentile(50);
+		double bpm = 60/median;
         if (bpm > maxbpm) {
             bpm = bpm/2;
         }
