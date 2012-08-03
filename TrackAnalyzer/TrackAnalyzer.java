@@ -57,35 +57,40 @@ import org.jaudiotagger.tag.mp4.Mp4Tag;
 import org.jaudiotagger.tag.mp4.field.Mp4TagReverseDnsField;
 import org.jaudiotagger.tag.mp4.field.Mp4TagTextField;
 import org.jaudiotagger.tag.vorbiscomment.VorbisCommentTag;
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
 
 public class TrackAnalyzer {
 
-	boolean logging;
-	boolean writeTags;
-	BufferedWriter logger;
+	CommandLineArgs c = new CommandLineArgs();
+	BufferedWriter writeListWriter;
 	ArrayList<String> filenames = new ArrayList<String>();
 	public final KeyFinder k;
 	public final Parameters p;
 
 	TrackAnalyzer(String[] args) throws Exception {
-		logging = true;
-		writeTags = true;
-		if (args.length < 1) {
-			System.out.println("usage: TrackAnalyzer inputfile.mp3");
-			System.out.println("    or TrackAnalyzer -l filelist.txt");
+
+		JCommander jcommander = new JCommander(c, args);
+		jcommander.setProgramName("TrackAnalyzer");
+		if ((c.filenames.size() == 0 && Utils.isEmpty(c.filelist)) || c.help) {
+			jcommander.usage();
 			System.exit(-1);
+		}
+		if (c.debug) {
+			Logger.getLogger(TrackAnalyzer.class.getName()).setLevel(Level.ALL);
+		} else {
+			Logger.getLogger(TrackAnalyzer.class.getName()).setLevel(Level.WARNING);
 		}
 		// we have a list, read all the filenames in the list and 
 		// collect them in 'filenames'
-		if (args[0].equals("-l")) {
-			assert (args.length > 1);
+		if (!Utils.isEmpty(c.filelist)) {
 			try {
 				//use buffering, reading one line at a time
 				//FileReader always assumes default encoding is OK!
-				BufferedReader input = new BufferedReader(new FileReader(new File(args[1])));
+				BufferedReader input = new BufferedReader(new FileReader(new File(c.filelist)));
 				try {
 					String line = null; //not declared within while loop
-						/*
+					/*
 					 * readLine is a bit quirky :
 					 * it returns the content of a line MINUS the newline.
 					 * it returns null only for the END of the stream.
@@ -101,16 +106,16 @@ public class TrackAnalyzer {
 				ex.printStackTrace();
 				System.exit(-1);
 			}
-		} else {
-			// we don't have a list, but a single audiofile. append it to
-			// the empty list
-			filenames.add(args[0]);
 		}
+		// add filenames from command line
+		filenames.addAll(c.filenames);
 
-		try {
-			logger = new BufferedWriter(new FileWriter("c:\\temp\\TrackAnalyezerLog.txt"));
-		} catch (IOException ex) {
-			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+		if (!Utils.isEmpty(c.writeList)) {
+			try {
+				writeListWriter = new BufferedWriter(new FileWriter(c.writeList));
+			} catch (IOException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+			}
 		}
 		k = new KeyFinder();
 		p = new Parameters();
@@ -166,11 +171,11 @@ public class TrackAnalyzer {
 	 * @param wroteTags true if tags were written successfully
 	 */
 	public void logDetectionResult(String filename, String key, String bpm, boolean wroteTags) {
-		if (logging) {
+		if (!Utils.isEmpty(c.writeList)) {
 			try {
-				logger.write(filename + ";" + key + ";" + bpm + ";" + wroteTags);
-				logger.newLine();
-				logger.flush();
+				writeListWriter.write(filename + ";" + key + ";" + bpm + ";" + wroteTags);
+				writeListWriter.newLine();
+				writeListWriter.flush();
 			} catch (IOException ex) {
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 			}
@@ -190,7 +195,7 @@ public class TrackAnalyzer {
 
 		@Override
 		public Boolean call() {
-			return analyzeTrack(filename, writeTags);
+			return analyzeTrack(filename, c.writeTags);
 		}
 	}
 
@@ -201,7 +206,7 @@ public class TrackAnalyzer {
 	 * @param formattedBpm
 	 * @param key
 	 */
-	public boolean writeTags(String filename, String formattedBpm, String key) {
+	public boolean updateTags(String filename, String formattedBpm, String key) {
 		File file = new File(filename);
 		try {
 			AudioFile f = AudioFileIO.read(file);
@@ -216,11 +221,9 @@ public class TrackAnalyzer {
 			}
 			tag.setField(FieldKey.BPM, formattedBpm);
 			f.commit();
-			logDetectionResult(filename, key, formattedBpm, true);
 			return true;
 		} catch (Exception e) {
 			System.out.println("problem with tags in file " + filename);
-			logDetectionResult(filename, key, formattedBpm, false);
 			return false;
 		}
 	}
@@ -283,9 +286,11 @@ public class TrackAnalyzer {
 		}
 		System.out.printf("%s key: %s BPM: %s\n", filename, Parameters.camelotKey(r.globalKeyEstimate), formattedBpm);
 
-		if (writeTags) {
-			writeTags(filename, formattedBpm, Parameters.camelotKey(r.globalKeyEstimate));
+		boolean wroteTags = false;
+		if (c.writeTags) {
+			wroteTags = updateTags(filename, formattedBpm, Parameters.camelotKey(r.globalKeyEstimate));
 		}
+		logDetectionResult(filename, Parameters.camelotKey(r.globalKeyEstimate), formattedBpm, wroteTags);
 		if (temp != null) {
 			temp.delete();
 		}
@@ -320,7 +325,7 @@ public class TrackAnalyzer {
 		}
 		threadPool.shutdown();
 		try {
-			logger.close();
+			writeListWriter.close();
 		} catch (IOException ex) {
 			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 		}
@@ -328,7 +333,6 @@ public class TrackAnalyzer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Logger.getLogger(TrackAnalyzer.class.getName()).setLevel(Level.ALL);
 		TrackAnalyzer ta = new TrackAnalyzer(args);
 		ta.run();
 
