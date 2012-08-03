@@ -6,10 +6,11 @@ You also need these libraries:
 JAudioTagger - used for reading/writing tags of audio files
 jTransforms - fast fourier transforms
 Jave - ffmpeg wrapper
+Apache Math
+JCommander - command line parsing
 
 You can use TrackAnalyzer like this:
-java -jar trackanalyzer.jar audiofile.mp3
-or java -jar trackanalyzer.jar -l listOfAudioFiles.txt
+java -jar TrackAnalyzer.jar *.mp3 -w -o results.txt
 
 BPM and key information will be calculated and written to the tags
 (KEY_START and BPM fields).
