@@ -264,8 +264,15 @@ public class TrackAnalyzer {
 		}
 
 		// get bpm
+		if (c.hiQuality) {
+			try {
+				decodeAudioFile(new File(filename), temp, 44100);
+			} catch (Exception ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't decode " + filename + " for hiquality bpm detection.", ex);
+			}
+		}
 		double bpm = BeatRoot.getBPM(wavfilename);
-		if (Double.isNaN(bpm)) {
+		if (Double.isNaN(bpm) && !c.hiQuality) {
 			try {
 				// bpm couldn't be detected. try again with a higher quality wav.
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm couldn't be detected for " + filename + ". Trying again.");
@@ -279,6 +286,8 @@ public class TrackAnalyzer {
 			} catch (Exception ex) {
 				logDetectionResult(filename, "-", "-", false);
 			}
+		} else if (Double.isNaN(bpm) && c.hiQuality) {
+			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "bpm couldn't be detected for " + filename + ".");
 		}
 		String formattedBpm = "0";
 		if (!Double.isNaN(bpm)) {
@@ -324,10 +333,12 @@ public class TrackAnalyzer {
 			}
 		}
 		threadPool.shutdown();
-		try {
-			writeListWriter.close();
-		} catch (IOException ex) {
-			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+		if (!Utils.isEmpty(c.writeList)) {
+			try {
+				writeListWriter.close();
+			} catch (IOException ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
+			}
 		}
 		System.exit(0);
 	}
