@@ -13,6 +13,9 @@ public class CommandLineArgs {
     @Parameter(names = "-w", description = "write to Tags")
 	public boolean writeTags = false;
 
+    @Parameter(names = "--hiquality", description = "don't downsample for bpm detection")
+	public boolean hiQuality = false;
+	
 	@Parameter(names = "-o", description = "write results to text file")
 	public String writeList = "";
 	
