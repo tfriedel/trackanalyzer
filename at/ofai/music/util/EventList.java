@@ -535,15 +535,15 @@ public class EventList implements Serializable {
 	public double getBPM() {
         double maxbpm = 165;
 		double minbpm = 67;
-		ArrayList<Double> l = new ArrayList<Double>();
+		ArrayList<Double> onsetList = new ArrayList<Double>();
 		for (Iterator<Event> it = iterator(); it.hasNext(); ) {
 			Event e = it.next();
-			l.add(e.keyDown);
+			onsetList.add(e.keyDown);
 		}
 		DescriptiveStatistics stats = new DescriptiveStatistics();
-		if (l.size()>1) 
-			for (int i=1;i<l.size();i++) {
-				stats.addValue(l.get(i)-l.get(i-1));
+		if (onsetList.size()>1) 
+			for (int i=1;i<onsetList.size();i++) {
+				stats.addValue(onsetList.get(i)-onsetList.get(i-1));
 			}
 		
 		double median = stats.getPercentile(50);
