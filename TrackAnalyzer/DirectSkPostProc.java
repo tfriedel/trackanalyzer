@@ -75,12 +75,14 @@ public class DirectSkPostProc extends FftPostProcessor {
 		ArrayList<Float> cv = new ArrayList<Float>(bins);
 		for (int i = 0; i < bins; i++) {
 			float sum = (float) 0.0;
-			for (int j = 0; j < mySpecKernel.get(i).size(); j++) {
+			int kernel_i_size = mySpecKernel.get(i).size();
+			ArrayList<Float> kernel_i = mySpecKernel.get(i);
+			for (int j = 0; j < kernel_i_size; j++) {
 				int binNum = binOffsets.get(i) + j;
 				double real = fftResult[binNum*2];
 				double imag = fftResult[binNum*2+1];
 				float magnitude = (float) Math.sqrt((real * real) + (imag * imag));
-				sum += (magnitude * mySpecKernel.get(i).get(j));
+				sum += (magnitude * kernel_i.get(j));
 			}
 			cv.add(new Float(sum));
 		}
