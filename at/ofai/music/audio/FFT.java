@@ -21,6 +21,10 @@
 /* This file was modified in 2012 by Thomas Friedel */
 package at.ofai.music.audio;
 
+import TrackAnalyzer.FftPostProcessor;
+import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
+import java.util.Arrays;
+
 /** Class for computing a windowed fast Fourier transform.
  *  Implements some of the window functions for the STFT from
  *  Harris (1978), Proc. IEEE, 66, 1, 51-83.
@@ -151,8 +155,9 @@ public class FFT {
 	 */
 	public static void powerPhaseFFT(double[] re, double[] im) {
 		fft(re, im, FORWARD);
+		double pow;
 		for (int i = 0; i < re.length; i++) {
-			double pow = re[i] * re[i] + im[i] * im[i];
+			pow = re[i] * re[i] + im[i] * im[i];
 			//im[i] = Math.atan2(im[i], re[i]);
 			im[i] = FastTrig.aTan2(im[i], re[i]);
 			//im[i] = FastTrig.aTan2Lookup((float)im[i], (float)re[i]);
@@ -160,6 +165,29 @@ public class FFT {
 			re[i] = pow;
 		}
 	} // powerPhaseFFT()
+
+	/** Computes a real FFT and converts
+	 *  the results to polar coordinates (power and phase). Both arrays
+	 *  must be the same length, which is a power of 2.
+	 *  This is a optimized version which doesn't return phase. Be careful!
+	 *  @param re the real part of the input data and the power of the output
+	 *  data
+	 *  @param im the imaginary part of the input data (=0,..,0) and the phase of the
+	 *  output data
+	 */
+	public static void powerRealPhaseFFT(double[] re, double[] im) {
+		DoubleFFT_1D fft_j = new DoubleFFT_1D(re.length);
+		double[] fftInput = Arrays.copyOf(re, re.length * 2); //2 because these are complex values with real and img. part
+		fft_j.realForwardFull(fftInput);
+		double pow;
+		for (int i = 0; i < re.length; i++) {
+			//im[i] = Math.atan2(im[i], re[i]);
+			//im[i] = FastTrig.aTan2Lookup((float)im[i], (float)re[i]);
+			//im[i] = FastTrig.fast_atan2((float)im[i], (float)re[i]);
+			//im[i] = FastTrig.aTan2(fftInput[i*2+1], fftInput[i*2]);
+			re[i] = fftInput[i*2] * fftInput[i*2] + fftInput[i*2 + 1] * fftInput[i*2 + 1];
+		}
+	} // powerRealPhaseFFT()
 	
 	/** Inline computation of the inverse FFT given spectral input data
 	 *  in polar coordinates (power and phase).
@@ -188,11 +216,25 @@ public class FFT {
 	 *  output data
 	 */
 	public static void magnitudePhaseFFT(double[] re, double[] im) {
+		//powerPhaseFFT(re, im);
 		powerPhaseFFT(re, im);
 		toMagnitude(re);
 	} // magnitudePhaseFFT()
 
-
+	/** Computes a real FFT and converts
+	 *  the results to polar coordinates (magnitude and phase). Both arrays
+	 *  must be the same length, which is a power of 2.
+	 *  @param re the real part of the input data and the magnitude of the
+	 *  output data
+	 *  @param im the imaginary part of the input data and the phase of the
+	 *  output data (assumed to be 0,...,0)
+	 */
+	public static void magnitudeRealPhaseFFT(double[] re, double[] im) {
+		//powerPhaseFFT(re, im);
+		powerRealPhaseFFT(re, im);
+		toMagnitude(re);
+	} // magnitudePhaseFFT()
+	
 	/** Fill an array with the values of a standard Hamming window function
 	 *  @param data the array to be filled
 	 *  @param size the number of non zero values; if the array is larger than

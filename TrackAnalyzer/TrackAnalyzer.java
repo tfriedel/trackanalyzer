@@ -239,12 +239,16 @@ public class TrackAnalyzer {
 		String wavfilename = "";
 		AudioData data = new AudioData();
 		File temp = null;
+		File temp2 = null;
 		try {
 			temp = File.createTempFile("keyfinder", ".wav");
+			temp2 = File.createTempFile("keyfinder2", ".wav");
 			wavfilename = temp.getAbsolutePath();
 			// Delete temp file when program exits.
 			temp.deleteOnExit();
-			decodeAudioFile(new File(filename), temp);
+			temp2.deleteOnExit();
+			decodeAudioFile(new File(filename), temp, 44100);
+			decodeAudioFile(temp, temp2);
 		} catch (Exception ex) {
 			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "error while decoding" + filename + ".");
 			if (temp.length() == 0) {
@@ -255,7 +259,7 @@ public class TrackAnalyzer {
 
 		KeyDetectionResult r;
 		try {
-			data.loadFromAudioFile(wavfilename);
+			data.loadFromAudioFile(temp2.getAbsolutePath());
 			r = k.findKey(data, p);
 		} catch (Exception ex) {
 			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
@@ -266,7 +270,8 @@ public class TrackAnalyzer {
 		// get bpm
 		if (c.hiQuality) {
 			try {
-				decodeAudioFile(new File(filename), temp, 44100);
+				//decodeAudioFile(new File(filename), temp, 44100);
+				//@todo hiquality stuff
 			} catch (Exception ex) {
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "couldn't decode " + filename + " for hiquality bpm detection.", ex);
 			}

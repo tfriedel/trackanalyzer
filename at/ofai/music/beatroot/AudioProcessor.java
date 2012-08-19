@@ -508,8 +508,8 @@ public class AudioProcessor {
 				if (++cbIndex == fftSize)
 					cbIndex = 0;
 			}
-			Arrays.fill(imBuffer, 0);
-			FFT.magnitudePhaseFFT(reBuffer, imBuffer);
+			Arrays.fill(imBuffer, 0); // could probably be redundant
+			FFT.magnitudeRealPhaseFFT(reBuffer, imBuffer);
 			Arrays.fill(newFrame, 0);
 			double flux = 0;
 			for (int i = 0; i <= fftSize/2; i++) {

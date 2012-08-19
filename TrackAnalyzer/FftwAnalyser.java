@@ -33,7 +33,6 @@ public class FftwAnalyser extends SpectrumAnalyser {
 	private int fftFrameSize;
 	private FftPostProcessor pp;
 	private double[] fftInput;
-	private double[] fftResult;
 	private ArrayList<Float> window;
 	private final DoubleFFT_1D fft;
 
@@ -68,15 +67,13 @@ public class FftwAnalyser extends SpectrumAnalyser {
 		for (int i = 0; i < sampleCount; i += hopSize) {
 			for (int j = 0; j < fftFrameSize; j++) {
 				if (i + j < sampleCount) {
-					fftInput[j * 2] = (double) (audio.getSample(i + j) * window.get(j)); // real part, windowed
+					fftInput[j] = (double) (audio.getSample(i + j) * window.get(j)); // real part, windowed
 				} else {
-					fftInput[j * 2] = 0.0; // zero-pad if no PCM data remaining
+					fftInput[j] = 0.0; // zero-pad if no PCM data remaining
 				}
-				fftInput[j * 2 + 1] = 0.0; // zero out imaginary part
 			}
-			fftResult = Arrays.copyOf(fftInput, fftInput.length);
-			fft.complexForward(fftResult);
-			ArrayList<Float> cv = pp.chromaVector(fftResult);
+			fft.realForwardFull(fftInput);
+			ArrayList<Float> cv = pp.chromaVector(fftInput);
 
 			for (int j = 0; j < bins; j++) {
 				ch.setMagnitude(i / hopSize, j, cv.get(j));
