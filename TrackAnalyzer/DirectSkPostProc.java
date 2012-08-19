@@ -29,8 +29,8 @@ import java.util.ArrayList;
 
 public class DirectSkPostProc extends FftPostProcessor {
 
-	private ArrayList<ArrayList<Float>> mySpecKernel;
-	private ArrayList<Integer> binOffsets;
+	private float[][] mySpecKernel;
+	private int[] binOffsets;
 
 	private final float kernelWindow(float n, float N) {
 		// discretely sampled continuous function, but different to other window functions
@@ -41,10 +41,8 @@ public class DirectSkPostProc extends FftPostProcessor {
 	public DirectSkPostProc(int fr, Parameters params) throws Exception {
 		super(fr, params);
 // TODO check that last frequency doesn't go over Nyquist, and for sufficient low end resolution.
-		binOffsets = new ArrayList<Integer>(bins);
-		for (int i=0; i<bins; i++)
-			binOffsets.add(0);
-		mySpecKernel = Utils.newFloatArrayList2D(bins, 0);
+		binOffsets = new int[bins];
+		mySpecKernel = new float[bins][fftFrameSize];
 		float myQFactor = (float) (params.getDirectSkStretch() * (Math.pow(2,(1.0 / params.getBpo()))-1));
 		for (int i = 0; i < bins; i++){
 		  float centreOfWindow = params.getBinFreq(i) * fftFrameSize / fr;
@@ -57,15 +55,16 @@ public class DirectSkPostProc extends FftPostProcessor {
 			  continue; // haven't got to useful fft bins yet
 			if((float)thisFftBin > endOfWindow)
 			  break; // finished with useful fft bins
-			if(binOffsets.get(i) == 0)
-			  binOffsets.set(i, thisFftBin); // first useful fft bin
+			if(binOffsets[i] == 0)
+			  binOffsets[i] = thisFftBin; // first useful fft bin
 			float coefficient = kernelWindow(thisFftBin-beginningOfWindow,widthOfWindow);
 			sumOfCoefficients += coefficient;
-			mySpecKernel.get(i).add(coefficient);
+			mySpecKernel[i][thisFftBin] = coefficient;
 		  }
 		  // normalisation by sum of coefficients and frequency of bin; models CQT very closely
-		  for (int j = 0; j < mySpecKernel.get(i).size(); j++)
-			mySpecKernel.get(i).set(j, mySpecKernel.get(i).get(j) / sumOfCoefficients * params.getBinFreq(i));
+		  int kernel_i_size = mySpecKernel[i].length;
+		  for (int j = 0; j < kernel_i_size; j++)
+			mySpecKernel[i][j] =  mySpecKernel[i][j] / sumOfCoefficients * params.getBinFreq(i);
 		}
 
 	}
@@ -75,14 +74,14 @@ public class DirectSkPostProc extends FftPostProcessor {
 		ArrayList<Float> cv = new ArrayList<Float>(bins);
 		for (int i = 0; i < bins; i++) {
 			float sum = (float) 0.0;
-			int kernel_i_size = mySpecKernel.get(i).size();
-			ArrayList<Float> kernel_i = mySpecKernel.get(i);
+			int kernel_i_size = mySpecKernel[i].length;
+		    float[] kernel_i = mySpecKernel[i];
 			for (int j = 0; j < kernel_i_size; j++) {
-				int binNum = binOffsets.get(i) + j;
+				int binNum = binOffsets[i] + j;
 				double real = fftResult[binNum*2];
 				double imag = fftResult[binNum*2+1];
 				float magnitude = (float) Math.sqrt((real * real) + (imag * imag));
-				sum += (magnitude * kernel_i.get(j));
+				sum += (magnitude * kernel_i[j]);
 			}
 			cv.add(new Float(sum));
 		}
