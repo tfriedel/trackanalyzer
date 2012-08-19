@@ -63,10 +63,11 @@ public class FftwAnalyser extends SpectrumAnalyser {
 	public Chromagram chromagram(AudioData audio) throws Exception {
 		//@todo lock
 		//boost::mutex::scoped_lock lock(analyserMutex);
-		Chromagram ch = new Chromagram((audio.getSampleCount() / hopSize) + 1, bins);
-		for (int i = 0; i < audio.getSampleCount(); i += hopSize) {
+		int sampleCount = audio.getSampleCount();
+		Chromagram ch = new Chromagram((sampleCount / hopSize) + 1, bins);
+		for (int i = 0; i < sampleCount; i += hopSize) {
 			for (int j = 0; j < fftFrameSize; j++) {
-				if (i + j < audio.getSampleCount()) {
+				if (i + j < sampleCount) {
 					fftInput[j * 2] = (double) (audio.getSample(i + j) * window.get(j)); // real part, windowed
 				} else {
 					fftInput[j * 2] = 0.0; // zero-pad if no PCM data remaining
