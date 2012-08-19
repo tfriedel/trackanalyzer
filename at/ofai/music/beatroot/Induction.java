@@ -45,7 +45,8 @@ class Induction {
 	 *  0.30 seconds == 200 BPM
 	 *  0.25 seconds == 240 BPM
 	 */
-	public static double minIBI = 0.3; 
+	//public static double minIBI = 0.3; 
+	public static double minIBI = 0.364;  // 165 BPM
 
 	/** The maximum inter-beat interval (IBI), i.e. the minimum tempo
 	 *  hypothesis that can be returned.
@@ -53,7 +54,8 @@ class Induction {
 	 *  0.75 seconds ==  80 BPM
 	 *  0.60 seconds == 100 BPM
 	 */
-	public static double maxIBI = 1.0;	//  60BPM	// was 0.75 =>  80
+	//public static double maxIBI = 1.0;	//  60BPM	// was 0.75 =>  80
+	public static double maxIBI = 0.896;	//  67BPM	
 	
 	/** The maximum number of tempo hypotheses to return */
 	public static int topN = 10;
