@@ -60,26 +60,28 @@ public class FftwAnalyser extends SpectrumAnalyser {
 
 	@Override
 	public Chromagram chromagram(AudioData audio) throws Exception {
-		//@todo lock
-		//boost::mutex::scoped_lock lock(analyserMutex);
-		int sampleCount = audio.getSampleCount();
-		Chromagram ch = new Chromagram((sampleCount / hopSize) + 1, bins);
-		for (int i = 0; i < sampleCount; i += hopSize) {
-			for (int j = 0; j < fftFrameSize; j++) {
-				if (i + j < sampleCount) {
-					fftInput[j] = (double) (audio.getSample(i + j) * window.get(j)); // real part, windowed
-				} else {
-					fftInput[j] = 0.0; // zero-pad if no PCM data remaining
+		analyserMutex.lock();
+		try {
+			int sampleCount = audio.getSampleCount();
+			Chromagram ch = new Chromagram((sampleCount / hopSize) + 1, bins);
+			for (int i = 0; i < sampleCount; i += hopSize) {
+				for (int j = 0; j < fftFrameSize; j++) {
+					if (i + j < sampleCount) {
+						fftInput[j] = (double) (audio.getSample(i + j) * window.get(j)); // real part, windowed
+					} else {
+						fftInput[j] = 0.0; // zero-pad if no PCM data remaining
+					}
+				}
+				fft.realForwardFull(fftInput);
+				ArrayList<Float> cv = pp.chromaVector(fftInput);
+
+				for (int j = 0; j < bins; j++) {
+					ch.setMagnitude(i / hopSize, j, cv.get(j));
 				}
 			}
-			fft.realForwardFull(fftInput);
-			ArrayList<Float> cv = pp.chromaVector(fftInput);
-
-			for (int j = 0; j < bins; j++) {
-				ch.setMagnitude(i / hopSize, j, cv.get(j));
-			}
+			return ch;
+		} finally {
+			analyserMutex.unlock();
 		}
-		return ch;
-
 	}
 }

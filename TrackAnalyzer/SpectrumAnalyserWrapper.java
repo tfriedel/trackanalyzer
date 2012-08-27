@@ -25,6 +25,8 @@
 package TrackAnalyzer;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class SpectrumAnalyserWrapper {
 
@@ -54,23 +56,26 @@ class SpectrumAnalyserWrapper {
 class SpectrumAnalyserFactory {
 
 	private ArrayList<SpectrumAnalyserWrapper> analysers;
-	private Object factoryMutex;
+	private Lock factoryMutex;
 
 	public SpectrumAnalyserFactory() {
+		factoryMutex = new ReentrantLock();
 		analysers = new ArrayList<SpectrumAnalyserWrapper>(0);
 	}
 
 	public SpectrumAnalyser getSpectrumAnalyser(int f, Parameters p) throws Exception {
-		//@todo lock
-		//boost::mutex::scoped_lock lock(factoryMutex);
-		for (int i = 0; i < analysers.size(); i++) {
-			if (analysers.get(i).chkFrameRate() == f && p.equivalentForSpectralAnalysis(analysers.get(i).chkParams())) {
-				return analysers.get(i).getSpectrumAnalyser();
+		factoryMutex.lock();
+		try {
+			for (int i = 0; i < analysers.size(); i++) {
+				if (analysers.get(i).chkFrameRate() == f && p.equivalentForSpectralAnalysis(analysers.get(i).chkParams())) {
+					return analysers.get(i).getSpectrumAnalyser();
+				}
 			}
+			// no match found, build a new spectrum analyser
+			analysers.add(new SpectrumAnalyserWrapper(f, p, new FftwAnalyser(f, p)));
+			return analysers.get(analysers.size() - 1).getSpectrumAnalyser();
+		} finally {
+			factoryMutex.unlock();
 		}
-		// no match found, build a new spectrum analyser
-		analysers.add(new SpectrumAnalyserWrapper(f, p, new FftwAnalyser(f, p)));
-		return analysers.get(analysers.size() - 1).getSpectrumAnalyser();
-
 	}
 }

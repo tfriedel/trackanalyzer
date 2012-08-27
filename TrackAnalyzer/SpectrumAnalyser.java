@@ -24,15 +24,19 @@
 ************************************************************************/ 
 package TrackAnalyzer;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public abstract class SpectrumAnalyser {
 	protected int bins;
 	protected int hopSize;
 	protected int frameRate;
-	protected Object analyserMutex;	
+	protected final Lock analyserMutex;	
 	public SpectrumAnalyser(int f, Parameters params){
 	    bins = params.getOctaves() * params.getBpo();
     	hopSize = params.getHopSize();
 	    frameRate = f;
+		analyserMutex = new ReentrantLock();
 	} 	
 	abstract public Chromagram chromagram(AudioData data) throws Exception;
 	
