@@ -29,9 +29,11 @@ import java.util.ArrayList;
 public abstract class Segmentation {
 
 	public static Segmentation getSegmentation(Parameters params) {
-		/*
+		
 		if (params.getSegmentation() == Parameters.segmentation_t.SEGMENTATION_COSINE) {
 			return new CosineHcdf();
+		}
+		/*	
 		} else if (params.getSegmentation() == Parameters.segmentation_t.SEGMENTATION_HARTE) {
 			return new HarteHcdf();
 		} else if (params.getSegmentation() == Parameters.segmentation_t.SEGMENTATION_ARBITRARY) {
@@ -40,7 +42,7 @@ public abstract class Segmentation {
 			return new NoSeg();
 		}
 		*/
-	    return new NoSeg();
+		else return new NoSeg();
 	}
 
 	public abstract ArrayList<Float> getRateOfChange(Chromagram ch, Parameters params);
