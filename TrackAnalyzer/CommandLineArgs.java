@@ -19,6 +19,9 @@ public class CommandLineArgs {
 	@Parameter(names = "-o", description = "write results to text file")
 	public String writeList = "";
 	
+	@Parameter(names = "--nobpm", description = "don't detect bpm")
+	public boolean noBpm = false;
+	
 	@Parameter(names = "-l", description = "text file containing list of audio files")
 	public String filelist = "";
 
