@@ -15,7 +15,7 @@ import java.io.*;
 public class WavFile
 {
 	private enum IOState {READING, WRITING, CLOSED};
-	private final static int BUFFER_SIZE = 4096;
+	private final static int BUFFER_SIZE = 2*4096;
 
 	private final static int FMT_CHUNK_ID = 0x20746D66;
 	private final static int DATA_CHUNK_ID = 0x61746164;
@@ -23,7 +23,7 @@ public class WavFile
 	private final static int RIFF_TYPE_ID = 0x45564157;
 
 	private File file;						// File that will be read from or written to
-	private IOState ioState;				// Specifies the IO State of the Wav File (used for snaity checking)
+	private IOState ioState;				// Specifies the IO State of the Wav File (used for sanity checking)
 	private int bytesPerSample;			// Number of bytes required to store a single sample
 	private long numFrames;					// Number of frames within the data section
 	private FileOutputStream oStream;	// Output stream used for writting data

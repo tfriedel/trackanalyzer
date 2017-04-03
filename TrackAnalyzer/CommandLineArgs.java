@@ -22,6 +22,9 @@ public class CommandLineArgs {
 	@Parameter(names = "--nobpm", description = "don't detect bpm")
 	public boolean noBpm = false;
 	
+	@Parameter(names = "--duration", description = "cut track to length <duration> s for faster analysis")
+	public int duration = -1;
+	
 	@Parameter(names = "-l", description = "text file containing list of audio files")
 	public String filelist = "";
 
@@ -30,5 +33,5 @@ public class CommandLineArgs {
 
 	public static final String DEBUG = "-debug";
 	@Parameter(names = DEBUG, description = "Used to debug TrackAnalyzer")
-	public Boolean debug = Boolean.FALSE;
+	public boolean debug = false;
 }

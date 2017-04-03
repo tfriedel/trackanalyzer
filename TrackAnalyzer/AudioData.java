@@ -112,7 +112,28 @@ public class AudioData {
         channels = 1;
     }
 
-    
+	/**
+	 * cuts the audio file to a shorter version of length duration, starting
+	 * at offset 60 seconds, or earlier if not possible at 60 sec. 
+	 * @param duration 
+	 */
+	public void cutLength(int duration) {
+		int bps = frameRate * channels;
+		double[] new_samples = new double[duration * bps];
+		int start_offset = 60;
+		// if file too short to start at start_offset, start at length of track - duration
+		start_offset = Math.min(start_offset*bps, sampleCount-duration*bps);
+		if (start_offset < 0)
+			start_offset = 0;
+		if (duration * bps > sampleCount)
+			return;
+		else {
+			System.arraycopy(samples, start_offset, new_samples, 0, duration*bps);
+			samples = new_samples;
+			sampleCount = duration * frameRate;
+		}
+	}
+	
     public void writeWavFile(String filename) {
         try {
             String outputfilename = filename;

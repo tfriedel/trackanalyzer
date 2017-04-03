@@ -16,7 +16,7 @@ BPM and key information will be calculated and written to the tags
 (KEY_START and BPM fields).
 
 A current build of TrackAnalyzer can be downloaded at
-https://dl.dropbox.com/u/367262/TrackAnalyzer.zip
+https://www.dropbox.com/s/gevfxcay5mvrv2e/TrackAnalyzer.zip?dl=0
 
 TrackAnalyzer is licensed under the GPL, see gpl.txt.
 

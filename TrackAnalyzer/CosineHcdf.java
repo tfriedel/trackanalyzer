@@ -30,7 +30,7 @@ package TrackAnalyzer;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
+//@todo test this class
 public class CosineHcdf extends Segmentation {
 
 	@Override

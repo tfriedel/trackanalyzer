@@ -5,11 +5,13 @@ __author__ = 'Thomas'
 MIREX score weightings
 Key relation Score
 Exact match (tonic) 1.0
-Perfect fth (dominant) 0.5
+Perfect Fifth (dominant) 0.5
 Perfect fourth (subdominant) 0.5
 Relative major/minor 0.3
 Parallel major/minor 0.2
 """
+
+import sys
 def mirexScore(a, b):
     a_nr = int(a[:-1])
     b_nr = int(b[:-1])
@@ -29,8 +31,7 @@ def mirexScore(a, b):
 
 #f = file("c:\\users\\thomas\\key benchmark\\output.txt")
 #f = file("C:\\Users\\Thomas\\key benchmark\\ibrahim modern\\1127010670 - ibrahim modern\\output.txt")
-f = file("C:\\Users\\Thomas\\key benchmark\\harmonic key\\output.txt")
-f = file("C:\\users\\Thomas\\key benchmark\\beatles\\key\\beatles3.txt")
+f = file(sys.argv[1])
 lines = f.readlines()
 lines = [line.split(";") for line in lines]
 correct = [line[0].split("-",2) for line in lines]

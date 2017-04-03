@@ -65,7 +65,7 @@ public class TrackAnalyzer {
 	CommandLineArgs c = new CommandLineArgs();
 	BufferedWriter writeListWriter;
 	ArrayList<String> filenames = new ArrayList<String>();
-	public final KeyFinder k;
+	//public final KeyFinder k;
 	public final Parameters p;
 
 	TrackAnalyzer(String[] args) throws Exception {
@@ -117,9 +117,18 @@ public class TrackAnalyzer {
 				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.SEVERE, null, ex);
 			}
 		}
-		k = new KeyFinder();
 		p = new Parameters();
 		p.setHopSize(8192);
+		//p.setToneProfile(Parameters.tone_profile_t.TONE_PROFILE_KRUMHANSL);
+		//p.setToneProfile(Parameters.tone_profile_t.);
+		/*
+		p.setDirectSkStretch(0.8f);
+		p.setHopSize(4096);
+		p.setDetunedBandWeight(0.4f);
+		p.setHcdfGaussianSigma(16.0f);
+		p.setOctaves(6);
+		p.setTemporalWindow(Parameters.temporal_window_t.WINDOW_HANN);
+		*/
 	}
 
 	/**
@@ -238,32 +247,44 @@ public class TrackAnalyzer {
 	 * @return
 	 */
 	public boolean analyzeTrack(String filename, boolean writeTags) {
+		KeyFinder k = new KeyFinder();
 		String wavfilename = "";
 		AudioData data = new AudioData();
 		File temp = null;
 		File temp2 = null;
-		try {
-			temp = File.createTempFile("keyfinder", ".wav");
-			temp2 = File.createTempFile("keyfinder2", ".wav");
-			wavfilename = temp.getAbsolutePath();
-			// Delete temp file when program exits.
-			temp.deleteOnExit();
-			temp2.deleteOnExit();
-			decodeAudioFile(new File(filename), temp, 44100);
-			decodeAudioFile(temp, temp2);
-		} catch (Exception ex) {
-			Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "error while decoding" + filename + ".");
-			if (temp.length() == 0) {
-				logDetectionResult(filename, "-", "-", false);
-				temp.delete();
-				temp2.delete();
-				return false;
+		synchronized (this) {
+			try {
+
+				temp = File.createTempFile("keyfinder", ".wav");
+				temp2 = File.createTempFile("keyfinder2", ".wav");
+				wavfilename = temp.getAbsolutePath();
+				// Delete temp file when program exits.
+				temp.deleteOnExit();
+				temp2.deleteOnExit();
+				if (filename.toLowerCase().endsWith((".wav"))) {
+					decodeAudioFile(new File(filename), temp2);
+				} else {
+					decodeAudioFile(new File(filename), temp, 44100);
+					decodeAudioFile(temp, temp2);
+				}
+			} catch (Exception ex) {
+				Logger.getLogger(TrackAnalyzer.class.getName()).log(Level.WARNING, "error while decoding" + filename + ".");
+				if (temp.length() == 0) {
+					logDetectionResult(filename, "-", "-", false);
+					temp.delete();
+					temp2.delete();
+					return false;
+				}
 			}
 		}
-
 		KeyDetectionResult r;
 		try {
-			data.loadFromAudioFile(temp2.getAbsolutePath());
+			synchronized (this) {
+				data.loadFromAudioFile(temp2.getAbsolutePath());
+			}
+			if (c.duration != -1) {
+				data.cutLength(c.duration);
+			}
 			r = k.findKey(data, p);
 			if (r.globalKeyEstimate == Parameters.key_t.SILENCE) {
 				System.out.println("SILENCE");
@@ -327,6 +348,7 @@ public class TrackAnalyzer {
 			temp2.delete();
 		}
 	}
+
 	/**
 	 * This is the main loop of the program. For every file in the filenames
 	 * list, the file gets decoded and downsampled to a 4410 hz mono wav file.
@@ -367,7 +389,6 @@ public class TrackAnalyzer {
 	public static void main(String[] args) throws Exception {
 		TrackAnalyzer ta = new TrackAnalyzer(args);
 		ta.run();
-
 	}
 
 	/**
